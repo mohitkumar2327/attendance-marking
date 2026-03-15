@@ -26,7 +26,7 @@ Supports 1000+ students and employees on CPU only.
 
 ### 1. Clone the repo
 ```bash
-git clone https://github.com/yourusername/attendance-system.git
+git clone https://github.com/attendance-marking.git
 cd attendance-system
 ```
 
