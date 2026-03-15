@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h4 class="fw-bold mb-0">Students & Employees</h4>
+  <div class="d-flex gap-2">
+    <a href="/students/import"   class="btn btn-success">
+      <i class="bi bi-file-earmark-excel me-1"></i> Import Excel
+    </a>
+    <a href="/students/register" class="btn btn-primary">
+      <i class="bi bi-person-plus-fill me-1"></i> Register One
+    </a>
+  </div>
+</div>
+
+<!-- Stats -->
+<div class="row mb-4">
+  <div class="col-md-3">
+    <div class="card p-3 text-center">
+      <div class="fs-3 fw-bold text-primary">{{ total_students + total_employees }}</div>
+      <div class="text-muted small">Total People</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card p-3 text-center">
+      <div class="fs-3 fw-bold text-success">{{ total_students }}</div>
+      <div class="text-muted small">Students</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card p-3 text-center">
+      <div class="fs-3 fw-bold text-warning">{{ total_employees }}</div>
+      <div class="text-muted small">Employees</div>
+    </div>
+  </div>
+</div>
+
+<!-- Filter tabs -->
+<div class="mb-3">
+  <a href="?type=all"      class="btn btn-sm {{ 'btn-dark' if filter_type == 'all'      else 'btn-outline-secondary' }}">All</a>
+  <a href="?type=student"  class="btn btn-sm {{ 'btn-dark' if filter_type == 'student'  else 'btn-outline-secondary' }}">Students</a>
+  <a href="?type=employee" class="btn btn-sm {{ 'btn-dark' if filter_type == 'employee' else 'btn-outline-secondary' }}">Employees</a>
+</div>
+
+<div class="card p-4">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle">
+      <thead class="table-light">
+        <tr>
+          <th>#</th><th>Name</th><th>Roll/ID</th>
+          <th>Type</th><th>Department</th>
+          <th>Year</th><th>Email</th><th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in people %}
+        <tr>
+          <td>{{ p.id }}</td>
+          <td class="fw-semibold">{{ p.name }}</td>
+          <td>{{ p.roll_no }}</td>
+          <td>
+            {% if p.person_type == 'employee' %}
+              <span class="badge bg-warning text-dark">Employee</span>
+            {% else %}
+              <span class="badge bg-primary">Student</span>
+            {% endif %}
+          </td>
+          <td>{{ p.department }}</td>
+          <td>{{ p.year }}</td>
+          <td>{{ p.email or '—' }}</td>
+          <td>
+            <a href="/students/delete/{{ p.id }}"
+               class="btn btn-sm btn-outline-danger"
+               onclick="return confirm('Delete {{ p.name }}?')">
+              <i class="bi bi-trash"></i>
+            </a>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="8" class="text-center text-muted py-4">
+            No people registered yet.
+            <a href="/students/register">Register one</a> or
+            <a href="/students/import">import from Excel</a>.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

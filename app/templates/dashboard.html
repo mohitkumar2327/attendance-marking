@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block content %}
+<h4 class="fw-bold mb-4"><i class="bi bi-speedometer2 me-2"></i>Dashboard</h4>
+
+<div class="row">
+  <div class="col-md-4">
+    <div class="stat-card" style="background:linear-gradient(135deg,#1e3a5f,#2e6da4);">
+      <div class="number">{{ total }}</div>
+      <div class="label"><i class="bi bi-people-fill me-1"></i>Total Students</div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="stat-card" style="background:linear-gradient(135deg,#1a7a4a,#27ae60);">
+      <div class="number">{{ present }}</div>
+      <div class="label"><i class="bi bi-check-circle-fill me-1"></i>Present Today</div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="stat-card" style="background:linear-gradient(135deg,#922b21,#e74c3c);">
+      <div class="number">{{ absent }}</div>
+      <div class="label"><i class="bi bi-x-circle-fill me-1"></i>Absent Today</div>
+    </div>
+  </div>
+</div>
+
+<!-- Attendance % bar -->
+<div class="card p-4 mb-4">
+  <div class="d-flex justify-content-between mb-2">
+    <span class="fw-semibold">Today's Attendance Rate</span>
+    <span class="fw-bold text-primary">
+      {{ ((present / total * 100) | round(1)) if total > 0 else 0 }}%
+    </span>
+  </div>
+  <div class="progress" style="height:12px; border-radius:8px;">
+    <div class="progress-bar bg-success" style="width:{{ ((present / total * 100)) if total > 0 else 0 }}%"></div>
+    <!-- <div class="progress-bar bg-success" style="width: {{ (present / total * 100) | round(1) if total > 0 else 0 }}%"></div> -->
+
+  </div>
+</div>
+
+<!-- Recent attendance table -->
+<div class="card p-4">
+  <h6 class="fw-bold mb-3"><i class="bi bi-clock-history me-2"></i>Recent Attendance — {{ today }}</h6>
+  <div class="table-responsive">
+    <table class="table table-hover align-middle">
+      <thead class="table-light">
+        <tr>
+          <th>Name</th><th>Roll No</th><th>IN 1</th>
+          <th>OUT 1</th><th>IN 2</th><th>OUT 2</th><th>Total</th><th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in recent %}
+        <tr>
+          <td class="fw-semibold">{{ r.student.name }}</td>
+          <td>{{ r.student.roll_no }}</td>
+          <td><span class="badge bg-success">{{ r.in1 or '—' }}</span></td>
+          <td><span class="badge bg-warning text-dark">{{ r.out1 or '—' }}</span></td>
+          <td><span class="badge bg-success">{{ r.in2 or '—' }}</span></td>
+          <td><span class="badge bg-warning text-dark">{{ r.out2 or '—' }}</span></td>
+          <td>{{ r.total_hours or '—' }}</td>
+          <td><span class="badge bg-primary">{{ r.status }}</span></td>
+        </tr>
+        {% else %}
+        <tr><td colspan="8" class="text-center text-muted">No attendance marked yet today.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

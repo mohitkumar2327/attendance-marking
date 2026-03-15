@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+
+# Virtual environment
+venv/
+env/
+.venv/
+
+# Flask / app data
+instance/
+*.db
+*.sqlite3
+
+# Face data — DO NOT upload to GitHub (privacy)
+dataset/
+embeddings.pkl
+temp.jpg
+temp_frame.jpg
+
+# Environment secrets
+.env
+
+# Reports / exports
+*.xlsx
+*.pdf
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/

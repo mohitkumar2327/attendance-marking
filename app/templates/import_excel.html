@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h4 class="fw-bold mb-0">
+    <i class="bi bi-file-earmark-excel me-2 text-success"></i>
+    Import from Excel
+  </h4>
+  <a href="/students/" class="btn btn-outline-secondary">
+    <i class="bi bi-arrow-left me-1"></i> Back
+  </a>
+</div>
+
+<div class="row">
+  <!-- Upload card -->
+  <div class="col-md-7">
+    <div class="card p-4 mb-4">
+      <h6 class="fw-bold mb-3">Upload Excel File</h6>
+      <form method="POST" enctype="multipart/form-data">
+        <div class="mb-3">
+          <label class="form-label fw-semibold">
+            Select Excel file (.xlsx or .xls)
+          </label>
+          <input type="file" name="excel_file"
+                 class="form-control" accept=".xlsx,.xls" required/>
+          <div class="form-text">
+            Max 1000+ rows supported. Duplicate roll numbers will be skipped.
+          </div>
+        </div>
+        <button type="submit" class="btn btn-success px-4">
+          <i class="bi bi-upload me-1"></i> Import Now
+        </button>
+        <a href="/students/download_template"
+           class="btn btn-outline-secondary ms-2">
+          <i class="bi bi-download me-1"></i> Download Template
+        </a>
+      </form>
+    </div>
+  </div>
+
+  <!-- Instructions card -->
+  <div class="col-md-5">
+    <div class="card p-4">
+      <h6 class="fw-bold mb-3">Excel Format</h6>
+      <p class="text-muted small mb-2">
+        Your Excel file must have these columns:
+      </p>
+      <table class="table table-sm table-bordered small">
+        <thead class="table-light">
+          <tr><th>Column</th><th>Required</th><th>Example</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>name</td>
+              <td><span class="badge bg-danger">Yes</span></td>
+              <td>John Doe</td></tr>
+          <tr><td>roll_no</td>
+              <td><span class="badge bg-danger">Yes</span></td>
+              <td>CS001</td></tr>
+          <tr><td>department</td>
+              <td><span class="badge bg-secondary">No</span></td>
+              <td>Computer Science</td></tr>
+          <tr><td>year</td>
+              <td><span class="badge bg-secondary">No</span></td>
+              <td>1st Year</td></tr>
+          <tr><td>email</td>
+              <td><span class="badge bg-secondary">No</span></td>
+              <td>john@email.com</td></tr>
+          <tr><td>parent_email</td>
+              <td><span class="badge bg-secondary">No</span></td>
+              <td>parent@email.com</td></tr>
+          <tr><td>type</td>
+              <td><span class="badge bg-secondary">No</span></td>
+              <td>student / employee</td></tr>
+        </tbody>
+      </table>
+      <div class="alert alert-info small mt-2 mb-0">
+        After importing, run
+        <code>python capture_faces.py</code>
+        for each person to enroll their face.
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

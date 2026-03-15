@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h4 class="fw-bold mb-0"><i class="bi bi-person-plus-fill me-2"></i>Register Student</h4>
+  <a href="/students/" class="btn btn-outline-secondary">
+    <i class="bi bi-arrow-left me-1"></i> Back
+  </a>
+</div>
+
+<div class="card p-4" style="max-width:650px;">
+  <form method="POST" enctype="multipart/form-data">
+    <div class="row">
+      <div class="col-md-6 mb-3">
+        <label class="form-label fw-semibold">Full Name</label>
+        <input type="text" name="name" class="form-control" placeholder="e.g. John Doe" required/>
+      </div>
+      <div class="col-md-6 mb-3">
+        <label class="form-label fw-semibold">Roll Number</label>
+        <input type="text" name="roll_no" class="form-control" placeholder="e.g. CS2024001" required/>
+      </div>
+      <div class="col-md-6 mb-3">
+        <label class="form-label fw-semibold">Department</label>
+        <input type="text" name="department" class="form-control" placeholder="e.g. Computer Science"/>
+      </div>
+      <div class="col-md-6 mb-3">
+        <label class="form-label fw-semibold">Year</label>
+        <div class="col-md-6 mb-3">
+            <label class="form-label fw-semibold">Type</label>
+            <select name="person_type" class="form-select">
+                <option value="student">Student</option>
+                <option value="employee">Employee</option>
+            </select>
+        </div>
+      </div>
+      <div class="col-md-6 mb-3">
+        <label class="form-label fw-semibold">Student Email</label>
+        <input type="email" name="email" class="form-control" placeholder="student@email.com"/>
+      </div>
+      <div class="col-md-6 mb-3">
+        <label class="form-label fw-semibold">Parent Email</label>
+        <input type="email" name="parent_email" class="form-control" placeholder="parent@email.com"/>
+      </div>
+      <div class="col-12 mb-4">
+        <label class="form-label fw-semibold">
+          Face Photos <span class="text-muted small">(upload 5–30 clear photos)</span>
+        </label>
+        <input type="file" name="photos" class="form-control" multiple accept="image/*" required/>
+        <div class="form-text">
+          Tip: use photos captured with <code>python capture_faces.py</code> for best accuracy.
+        </div>
+      </div>
+    </div>
+    <button type="submit" class="btn btn-primary px-4 fw-semibold">
+      <i class="bi bi-person-check-fill me-1"></i> Register Student
+    </button>
+  </form>
+</div>
+{% endblock %}

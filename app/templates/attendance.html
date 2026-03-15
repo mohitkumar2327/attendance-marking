@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block content %}
+<h4 class="fw-bold mb-4"><i class="bi bi-camera-fill me-2"></i>Live Attendance</h4>
+
+<div class="row">
+  <div class="col-md-5">
+    <div class="card p-3 mb-4">
+      <h6 class="fw-bold mb-3">Live Camera Feed</h6>
+      <img src="/attendance/video_feed"
+           style="width:100%; border-radius:8px; border:2px solid #e0e0e0;"
+           alt="Camera Feed"/>
+      <p class="text-muted small mt-2 mb-0 text-center">
+        Face detected automatically — attendance marked instantly
+      </p>
+    </div>
+  </div>
+
+  <div class="col-md-7">
+    <div class="card p-3">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h6 class="fw-bold mb-0">Today's Attendance</h6>
+        <button class="btn btn-sm btn-outline-primary" onclick="refreshTable()">
+          <i class="bi bi-arrow-clockwise"></i> Refresh
+        </button>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle small" id="attendance-table">
+          <thead class="table-light">
+            <tr>
+              <th>Name</th><th>IN 1</th><th>OUT 1</th>
+              <th>IN 2</th><th>OUT 2</th><th>Total</th>
+            </tr>
+          </thead>
+          <tbody id="attendance-body">
+            {% for r in records %}
+            <tr>
+              <td class="fw-semibold">{{ r.student.name }}</td>
+              <td><span class="badge bg-success">{{ r.in1 or '—' }}</span></td>
+              <td><span class="badge bg-warning text-dark">{{ r.out1 or '—' }}</span></td>
+              <td><span class="badge bg-success">{{ r.in2 or '—' }}</span></td>
+              <td><span class="badge bg-warning text-dark">{{ r.out2 or '—' }}</span></td>
+              <td>{{ r.total_hours or '—' }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6" class="text-center text-muted">No attendance yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function refreshTable() {
+  fetch("/attendance/today")
+    .then(r => r.json())
+    .then(data => {
+      const tbody = document.getElementById("attendance-body");
+      if (data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No attendance yet.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = data.map(r => `
+        <tr>
+          <td class="fw-semibold">${r.name}</td>
+          <td><span class="badge bg-success">${r.in1 || '—'}</span></td>
+          <td><span class="badge bg-warning text-dark">${r.out1 || '—'}</span></td>
+          <td><span class="badge bg-success">${r.in2 || '—'}</span></td>
+          <td><span class="badge bg-warning text-dark">${r.out2 || '—'}</span></td>
+          <td>${r.total || '—'}</td>
+        </tr>`).join("");
+    });
+}
+// Auto refresh every 10 seconds
+setInterval(refreshTable, 10000);
+</script>
+{% endblock %}
