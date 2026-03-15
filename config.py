@@ -17,3 +17,18 @@ class Config:
 
     DATASET_DIR   = "dataset"
     UPLOAD_FOLDER = "dataset"
+from datetime import time
+
+# Late coming thresholds — edit these anytime
+LATE_TIMINGS = {
+    "school":  time(8, 30),   # 8:30 AM
+    "college": time(9, 10),   # 9:10 AM
+    "office":  time(8, 30),   # 8:30 AM
+}
+
+# Set your institution type here
+INSTITUTION_TYPE = "college"  # change to "school" or "office"
+
+# INSTITUTION_TYPE = "school"   # 8:30 AM
+# INSTITUTION_TYPE = "college"  # 9:10 AM
+# INSTITUTION_TYPE = "office"   # 8:30 AM

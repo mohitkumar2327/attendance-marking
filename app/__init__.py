@@ -12,11 +12,24 @@ login.login_view = "auth.login"
 def create_app():
     app = Flask(__name__, instance_relative_config=True)
     app.config.from_object(Config)
-
+    from .routes.settings import settings_bp
+    app.register_blueprint(settings_bp)
     db.init_app(app)
     mail.init_app(app)
     login.init_app(app)
+    # Load cooldown setting from DB into recognize.py
+    def load_cooldown():
+        from .models import Settings
+        import app.face.recognize as rec
+        s = Settings.query.first()
+        if s and s.cooldown_seconds:
+            rec.COOLDOWN_SECONDS = s.cooldown_seconds
+            print(f"Cooldown loaded from DB: {s.cooldown_seconds}s")
 
+    with app.app_context():
+        db.create_all()
+        _create_default_admin()
+        load_cooldown()          # ← add this line
     from .routes.auth       import auth_bp
     from .routes.admin      import admin_bp
     from .routes.student    import student_bp

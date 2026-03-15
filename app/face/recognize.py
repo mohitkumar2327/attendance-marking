@@ -206,7 +206,7 @@ train_model()"""
 ################################################################ Updated to use embedding-based recognition for better accuracy #
 ###############################################################
 
-import cv2
+"""import cv2
 import os
 import numpy as np
 import pickle
@@ -247,7 +247,7 @@ def get_embedding(face_img):
     return lbp.astype(np.float32)
 
 def compute_lbp(gray_img):
-    """Local Binary Pattern histogram — good for face recognition."""
+    Local Binary Pattern histogram — good for face recognition.
     img   = cv2.resize(gray_img, (128, 128))
     lbp   = np.zeros_like(img, dtype=np.uint8)
     for i in range(1, img.shape[0]-1):
@@ -387,11 +387,11 @@ def find_best_match(face_img):
 
 # ── Cooldown check ────────────────────────────────────────────────
 def should_mark(name):
-    """
-    Returns True only if:
-    1. Person hasn't been marked in the last COOLDOWN_SECONDS
-    2. Prevents accidental rapid re-marking
-    """
+    
+   # Returns True only if:
+    #1. Person hasn't been marked in the last COOLDOWN_SECONDS
+    #2. Prevents accidental rapid re-marking
+
     now = time.time()
     if name not in person_state:
         person_state[name] = {"time": now, "count": 1}
@@ -447,6 +447,236 @@ def recognize_frame(frame):
         f"People enrolled: {len(known_names_set)}  |  "
         f"Cooldown: {COOLDOWN_SECONDS}s  |  FAISS: {USE_FAISS}",
         (10, frame.shape[0]-10),
+        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 1
+    )
+
+    return recognized_name, frame
+
+load_embeddings()"""
+
+
+
+import cv2
+import os
+import numpy as np
+import pickle
+import time
+
+DATASET_DIR     = "dataset"
+EMBEDDINGS_FILE = "embeddings.pkl"
+
+face_cascade = cv2.CascadeClassifier(
+    cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
+)
+
+try:
+    import faiss
+    USE_FAISS = True
+except ImportError:
+    USE_FAISS = False
+
+faiss_index     = None
+index_names     = []
+known_names_set = set()
+
+# ── Per-person cooldown — prevents all 4 events firing at once ────
+COOLDOWN_SECONDS = 300   # 5 minutes between each event per person
+last_marked      = {}    # { name: timestamp }
+
+# ── Embedding ─────────────────────────────────────────────────────
+def get_embedding(face_img):
+    if len(face_img.shape) == 3:
+        face_img = cv2.cvtColor(face_img, cv2.COLOR_BGR2GRAY)
+    face_resized = cv2.resize(face_img, (128, 128))
+    flat = face_resized.astype(np.float32).flatten()
+    dct  = cv2.dct(flat.reshape(1, -1))
+    return dct.flatten()[:128].astype(np.float32)
+
+def normalize(v):
+    n = np.linalg.norm(v)
+    return v / n if n > 0 else v
+
+# ── Build index ───────────────────────────────────────────────────
+def build_faiss_index(embeddings, names):
+    global faiss_index, index_names, known_names_set
+    index_names     = names
+    known_names_set = set(names)
+
+    if not embeddings:
+        return
+
+    vecs = np.array([normalize(e) for e in embeddings], dtype=np.float32)
+
+    if USE_FAISS:
+        index = faiss.IndexFlatIP(vecs.shape[1])
+        index.add(vecs)
+        faiss_index = index
+    else:
+        faiss_index = vecs
+
+    print(f"Index ready: {len(known_names_set)} people, "
+          f"{len(embeddings)} total samples")
+
+# ── Train ─────────────────────────────────────────────────────────
+def train_model():
+    embeddings, names = [], []
+
+    if not os.path.exists(DATASET_DIR):
+        print("Dataset folder not found!")
+        return
+
+    for folder in sorted(os.listdir(DATASET_DIR)):
+        folder_path = os.path.join(DATASET_DIR, folder)
+        if not os.path.isdir(folder_path):
+            continue
+
+        parts = folder.split("_", 1)
+        name  = parts[1].replace("_", " ") if len(parts) > 1 else folder
+        count = 0
+
+        for img_file in os.listdir(folder_path):
+            if not img_file.lower().endswith((".jpg", ".jpeg", ".png")):
+                continue
+            img = cv2.imread(
+                os.path.join(folder_path, img_file),
+                cv2.IMREAD_GRAYSCALE
+            )
+            if img is None:
+                continue
+
+            detected = face_cascade.detectMultiScale(
+                img, 1.1, 4, minSize=(40, 40)
+            )
+            if len(detected) > 0:
+                (x, y, w, h) = detected[0]
+                face = img[y:y+h, x:x+w]
+            else:
+                face = img
+
+            embeddings.append(get_embedding(face))
+            names.append(name)
+            count += 1
+
+        print(f"  {name}: {count} samples")
+
+    if not embeddings:
+        print("No samples found! Run capture_faces.py first.")
+        return
+
+    with open(EMBEDDINGS_FILE, "wb") as f:
+        pickle.dump({"embeddings": embeddings, "names": names}, f)
+
+    build_faiss_index(embeddings, names)
+    print(f"Training complete! {len(embeddings)} embeddings, "
+          f"{len(known_names_set)} people")
+
+def load_embeddings():
+    if os.path.exists(EMBEDDINGS_FILE):
+        with open(EMBEDDINGS_FILE, "rb") as f:
+            data = pickle.load(f)
+        build_faiss_index(data["embeddings"], data["names"])
+    else:
+        train_model()
+
+# ── Match ─────────────────────────────────────────────────────────
+def find_best_match(face_img):
+    if faiss_index is None:
+        return "No model", 0.0
+
+    emb       = normalize(get_embedding(face_img))
+    THRESHOLD = 0.88
+
+    if USE_FAISS:
+        scores, indices = faiss_index.search(
+            emb.reshape(1, -1).astype(np.float32), k=3
+        )
+        top_scores = [float(s) for s in scores[0]]
+        top_names  = [index_names[int(i)] for i in indices[0]
+                      if int(i) < len(index_names)]
+
+        if top_scores[0] >= THRESHOLD:
+            # Majority vote from top 3
+            vote = max(set(top_names), key=top_names.count)
+            return vote, top_scores[0]
+    else:
+        scores = faiss_index @ emb
+        top3   = np.argsort(scores)[-3:][::-1]
+        top_scores = [float(scores[i]) for i in top3]
+        top_names  = [index_names[i] for i in top3
+                      if i < len(index_names)]
+        if top_scores[0] >= THRESHOLD:
+            vote = max(set(top_names), key=top_names.count)
+            return vote, top_scores[0]
+
+    return "Unknown", 0.0
+
+# ── Main recognize function ───────────────────────────────────────
+def recognize_frame(frame):
+    scale       = 0.5
+    small       = cv2.resize(frame, (0, 0), fx=scale, fy=scale)
+    gray        = cv2.cvtColor(small, cv2.COLOR_BGR2GRAY)
+    gray        = cv2.equalizeHist(gray)
+
+    # ── Fix double box: use groupRectangles via larger minNeighbors ──
+    detected = face_cascade.detectMultiScale(
+        gray,
+        scaleFactor=1.1,
+        minNeighbors=6,     # higher = fewer false/double boxes
+        minSize=(60, 60),
+        flags=cv2.CASCADE_SCALE_IMAGE
+    )
+
+    recognized_name = None
+    now             = time.time()
+
+    # ── Only process the LARGEST face detected ───────────────────
+    # Prevents double-marking when two boxes appear on same face
+    if len(detected) > 1:
+        # Sort by area descending, take biggest
+        detected = sorted(detected, key=lambda r: r[2]*r[3], reverse=True)
+        detected = detected[:1]
+
+    for (x, y, w, h) in detected:
+        # Scale back to full frame
+        x2 = int(x / scale)
+        y2 = int(y / scale)
+        w2 = int(w / scale)
+        h2 = int(h / scale)
+
+        face_crop        = frame[y2:y2+h2, x2:x2+w2]
+        if face_crop.size == 0:
+            continue
+
+        name, confidence = find_best_match(face_crop)
+        color            = (0, 200, 0) if name != "Unknown" else (0, 0, 200)
+        label            = f"{name} ({confidence:.2f})"
+
+        # Draw box and label
+        cv2.rectangle(frame, (x2, y2), (x2+w2, y2+h2), color, 2)
+        cv2.rectangle(frame, (x2, y2-36), (x2+w2, y2), color, -1)
+        cv2.putText(frame, label, (x2+5, y2-10),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.6,
+                    (255, 255, 255), 2)
+
+        # ── Cooldown check ────────────────────────────────────────
+        if name not in ("Unknown", "No model"):
+            last = last_marked.get(name, 0)
+            if (now - last) >= COOLDOWN_SECONDS:
+                recognized_name   = name
+                last_marked[name] = now
+                # Show MARKED flash
+                cv2.putText(frame, "MARKED",
+                            (x2, y2 + h2 + 25),
+                            cv2.FONT_HERSHEY_SIMPLEX,
+                            0.8, (0, 255, 255), 2)
+
+    # Status bar
+    cv2.putText(
+        frame,
+        f"People: {len(known_names_set)}  |  "
+        f"Cooldown: {COOLDOWN_SECONDS}s  |  "
+        f"FAISS: {USE_FAISS}",
+        (10, frame.shape[0] - 10),
         cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 1
     )
 

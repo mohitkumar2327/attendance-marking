@@ -1,49 +1,80 @@
 {% extends "base.html" %}
 {% block content %}
-<h4 class="fw-bold mb-4"><i class="bi bi-camera-fill me-2"></i>Live Attendance</h4>
+<h4 class="fw-bold mb-4">
+  <i class="bi bi-camera-fill me-2"></i>Live Attendance
+</h4>
 
 <div class="row">
+  <!-- Camera feed -->
   <div class="col-md-5">
     <div class="card p-3 mb-4">
-      <h6 class="fw-bold mb-3">Live Camera Feed</h6>
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <h6 class="fw-bold mb-0">Live Camera</h6>
+        <span class="badge bg-success" id="cam-status">
+          <i class="bi bi-circle-fill me-1" style="font-size:8px;"></i>Live
+        </span>
+      </div>
       <img src="/attendance/video_feed"
-           style="width:100%; border-radius:8px; border:2px solid #e0e0e0;"
-           alt="Camera Feed"/>
+           id="camera-feed"
+           style="width:100%; border-radius:8px;
+                  border:2px solid #e0e0e0;"
+           alt="Camera Feed"
+           onerror="cameraError()"/>
       <p class="text-muted small mt-2 mb-0 text-center">
         Face detected automatically — attendance marked instantly
       </p>
     </div>
   </div>
 
+  <!-- Attendance table -->
   <div class="col-md-7">
     <div class="card p-3">
       <div class="d-flex justify-content-between align-items-center mb-3">
-        <h6 class="fw-bold mb-0">Today's Attendance</h6>
-        <button class="btn btn-sm btn-outline-primary" onclick="refreshTable()">
-          <i class="bi bi-arrow-clockwise"></i> Refresh
-        </button>
+        <h6 class="fw-bold mb-0">
+          Today's Attendance
+          <span class="badge bg-secondary ms-2" id="record-count">0</span>
+        </h6>
+        <div class="d-flex align-items-center gap-2">
+          <!-- Auto refresh toggle -->
+          <div class="form-check form-switch mb-0">
+            <input class="form-check-input" type="checkbox"
+                   id="auto-refresh" checked/>
+            <label class="form-check-label small" for="auto-refresh">
+              Auto refresh
+            </label>
+          </div>
+          <button class="btn btn-sm btn-outline-primary"
+                  onclick="loadAttendance()">
+            <i class="bi bi-arrow-clockwise"></i> Refresh
+          </button>
+        </div>
       </div>
+
+      <!-- Last updated time -->
+      <div class="text-muted small mb-2" id="last-updated">
+        Loading...
+      </div>
+
       <div class="table-responsive">
-        <table class="table table-hover align-middle small" id="attendance-table">
+        <table class="table table-hover align-middle small">
           <thead class="table-light">
             <tr>
-              <th>Name</th><th>IN 1</th><th>OUT 1</th>
-              <th>IN 2</th><th>OUT 2</th><th>Total</th>
+              <th>Name</th>
+              <th><span class="badge bg-success">IN 1</span></th>
+              <th><span class="badge bg-warning text-dark">OUT 1</span></th>
+              <th><span class="badge bg-success">IN 2</span></th>
+              <th><span class="badge bg-warning text-dark">OUT 2</span></th>
+              <th>Total</th>
+              <th>Status</th>
             </tr>
           </thead>
           <tbody id="attendance-body">
-            {% for r in records %}
             <tr>
-              <td class="fw-semibold">{{ r.student.name }}</td>
-              <td><span class="badge bg-success">{{ r.in1 or '—' }}</span></td>
-              <td><span class="badge bg-warning text-dark">{{ r.out1 or '—' }}</span></td>
-              <td><span class="badge bg-success">{{ r.in2 or '—' }}</span></td>
-              <td><span class="badge bg-warning text-dark">{{ r.out2 or '—' }}</span></td>
-              <td>{{ r.total_hours or '—' }}</td>
+              <td colspan="7" class="text-center text-muted py-3">
+                <div class="spinner-border spinner-border-sm me-2"></div>
+                Loading...
+              </td>
             </tr>
-            {% else %}
-            <tr><td colspan="6" class="text-center text-muted">No attendance yet.</td></tr>
-            {% endfor %}
           </tbody>
         </table>
       </div>
@@ -54,27 +85,119 @@
 
 {% block scripts %}
 <script>
-function refreshTable() {
+let autoRefreshTimer = null;
+let isLoading        = false;
+
+// ── Load attendance table ─────────────────────────────────────────
+function loadAttendance() {
+  if (isLoading) return;
+  isLoading = true;
+
   fetch("/attendance/today")
-    .then(r => r.json())
+    .then(r => {
+      if (!r.ok) throw new Error("Network error");
+      return r.json();
+    })
     .then(data => {
       const tbody = document.getElementById("attendance-body");
+      const count = document.getElementById("record-count");
+      const updated = document.getElementById("last-updated");
+
+      count.textContent = data.length;
+      updated.textContent = "Last updated: " +
+        new Date().toLocaleTimeString();
+
       if (data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No attendance yet.</td></tr>';
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="7" class="text-center text-muted py-3">
+              No attendance marked yet today.
+            </td>
+          </tr>`;
         return;
       }
+
       tbody.innerHTML = data.map(r => `
         <tr>
           <td class="fw-semibold">${r.name}</td>
-          <td><span class="badge bg-success">${r.in1 || '—'}</span></td>
-          <td><span class="badge bg-warning text-dark">${r.out1 || '—'}</span></td>
-          <td><span class="badge bg-success">${r.in2 || '—'}</span></td>
-          <td><span class="badge bg-warning text-dark">${r.out2 || '—'}</span></td>
-          <td>${r.total || '—'}</td>
-        </tr>`).join("");
+          <td>${r.in1
+            ? '<span class="badge bg-success">' + r.in1 + '</span>'
+            : '<span class="text-muted">—</span>'}</td>
+          <td>${r.out1
+            ? '<span class="badge bg-warning text-dark">' + r.out1 + '</span>'
+            : '<span class="text-muted">—</span>'}</td>
+          <td>${r.in2
+            ? '<span class="badge bg-success">' + r.in2 + '</span>'
+            : '<span class="text-muted">—</span>'}</td>
+          <td>${r.out2
+            ? '<span class="badge bg-warning text-dark">' + r.out2 + '</span>'
+            : '<span class="text-muted">—</span>'}</td>
+          <td>
+            <span class="fw-semibold ${r.total && r.total !== '—'
+              ? 'text-primary' : 'text-muted'}">
+              ${r.total || '—'}
+            </span>
+          </td>
+          <td>${statusBadge(r.status)}</td>
+        </tr>`
+      ).join("");
+    })
+    .catch(err => {
+      console.error("Refresh error:", err);
+      document.getElementById("last-updated").textContent =
+        "Refresh failed — retrying...";
+    })
+    .finally(() => {
+      isLoading = false;
     });
 }
-// Auto refresh every 10 seconds
-setInterval(refreshTable, 10000);
+
+// ── Status badge helper ───────────────────────────────────────────
+function statusBadge(status) {
+  if (status === "Late")
+    return '<span class="badge bg-danger">Late</span>';
+  if (status === "Present")
+    return '<span class="badge bg-success">Present</span>';
+  return `<span class="badge bg-secondary">${status || '—'}</span>`;
+}
+
+// ── Auto refresh toggle ───────────────────────────────────────────
+function startAutoRefresh() {
+  stopAutoRefresh();
+  autoRefreshTimer = setInterval(loadAttendance, 5000);  // every 5 seconds
+}
+
+function stopAutoRefresh() {
+  if (autoRefreshTimer) {
+    clearInterval(autoRefreshTimer);
+    autoRefreshTimer = null;
+  }
+}
+
+document.getElementById("auto-refresh").addEventListener("change", function() {
+  if (this.checked) {
+    startAutoRefresh();
+    document.getElementById("last-updated").textContent =
+      "Auto refresh ON (every 5s)";
+  } else {
+    stopAutoRefresh();
+    document.getElementById("last-updated").textContent =
+      "Auto refresh OFF";
+  }
+});
+
+// ── Camera error handler ──────────────────────────────────────────
+function cameraError() {
+  document.getElementById("cam-status").className = "badge bg-danger";
+  document.getElementById("cam-status").innerHTML =
+    '<i class="bi bi-circle-fill me-1" style="font-size:8px;"></i>Offline';
+}
+
+// ── Also update total hours in today route ────────────────────────
+// Load on page open + start auto refresh
+document.addEventListener("DOMContentLoaded", function() {
+  loadAttendance();
+  startAutoRefresh();
+});
 </script>
 {% endblock %}

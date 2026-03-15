@@ -1,0 +1,414 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h4 class="fw-bold mb-0">
+    <i class="bi bi-gear-fill me-2"></i>Settings
+  </h4>
+</div>
+
+<div class="row">
+
+  <!-- LEFT: Settings form -->
+  <div class="col-md-7">
+    <div class="card p-4">
+      <form method="POST">
+
+        <!-- Institution name -->
+        <div class="mb-4">
+          <label class="form-label fw-semibold">
+            <i class="bi bi-building me-1"></i>Institution Name
+          </label>
+          <input type="text" name="institution_name"
+                 class="form-control"
+                 value="{{ s.institution_name }}"
+                 placeholder="e.g. ABC School / XYZ College"/>
+        </div>
+
+        <hr class="my-3"/>
+
+        <!-- Institution type -->
+        <div class="mb-4">
+          <label class="form-label fw-semibold">
+            <i class="bi bi-diagram-3 me-1"></i>Institution Type
+          </label>
+          <select name="institution_type" class="form-select"
+                  id="inst-type" onchange="onTypeChange()">
+            <option value="school"
+              {{ 'selected' if s.institution_type == 'school' }}>
+              School
+            </option>
+            <option value="college"
+              {{ 'selected' if s.institution_type == 'college' }}>
+              College / University
+            </option>
+            <option value="office"
+              {{ 'selected' if s.institution_type == 'office' }}>
+              Office / Workplace
+            </option>
+          </select>
+          <div class="form-text">
+            Determines which late arrival threshold is active.
+          </div>
+        </div>
+
+        <hr class="my-3"/>
+
+        <!-- Late time thresholds -->
+        <div class="mb-4">
+          <label class="form-label fw-semibold">
+            <i class="bi bi-clock-fill me-1"></i>Late Arrival Thresholds
+          </label>
+          <p class="text-muted small mb-3">
+            Anyone arriving after the selected time will be marked
+            <span class="badge bg-danger">Late</span>
+            with exact minutes calculated.
+          </p>
+          <div class="row g-3">
+
+            <!-- School -->
+            <div class="col-md-4">
+              <div class="card p-3 threshold-card" id="card-school">
+                <div class="d-flex align-items-center mb-2">
+                  <i class="bi bi-building me-2 text-primary"></i>
+                  <span class="fw-semibold small">School</span>
+                  <span class="badge bg-primary ms-auto d-none"
+                        id="badge-school">Active</span>
+                </div>
+                <input type="time" name="school_late_time"
+                       class="form-control form-control-sm"
+                       value="{{ s.school_late_time }}"/>
+                <div class="form-text">Default: 08:30 AM</div>
+              </div>
+            </div>
+
+            <!-- College -->
+            <div class="col-md-4">
+              <div class="card p-3 threshold-card" id="card-college">
+                <div class="d-flex align-items-center mb-2">
+                  <i class="bi bi-mortarboard me-2 text-success"></i>
+                  <span class="fw-semibold small">College</span>
+                  <span class="badge bg-primary ms-auto d-none"
+                        id="badge-college">Active</span>
+                </div>
+                <input type="time" name="college_late_time"
+                       class="form-control form-control-sm"
+                       value="{{ s.college_late_time }}"/>
+                <div class="form-text">Default: 09:10 AM</div>
+              </div>
+            </div>
+
+            <!-- Office -->
+            <div class="col-md-4">
+              <div class="card p-3 threshold-card" id="card-office">
+                <div class="d-flex align-items-center mb-2">
+                  <i class="bi bi-briefcase me-2 text-warning"></i>
+                  <span class="fw-semibold small">Office</span>
+                  <span class="badge bg-primary ms-auto d-none"
+                        id="badge-office">Active</span>
+                </div>
+                <input type="time" name="office_late_time"
+                       class="form-control form-control-sm"
+                       value="{{ s.office_late_time }}"/>
+                <div class="form-text">Default: 08:30 AM</div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <hr class="my-3"/>
+
+        <!-- Cooldown -->
+        <div class="mb-4">
+          <label class="form-label fw-semibold">
+            <i class="bi bi-stopwatch me-1"></i>Camera Cooldown Time
+          </label>
+          <p class="text-muted small mb-2">
+            Minimum time between each attendance event per person
+            (IN1 → OUT1 → IN2 → OUT2).
+          </p>
+          <div class="row g-3 align-items-center">
+
+            <div class="col-md-5">
+              <select class="form-select" id="cooldown-select"
+                      onchange="onCooldownChange(this.value)">
+                <option value="30"
+                  {{ 'selected' if s.cooldown_seconds == 30 }}>
+                  30 seconds (testing)
+                </option>
+                <option value="60"
+                  {{ 'selected' if s.cooldown_seconds == 60 }}>
+                  1 minute
+                </option>
+                <option value="120"
+                  {{ 'selected' if s.cooldown_seconds == 120 }}>
+                  2 minutes
+                </option>
+                <option value="300"
+                  {{ 'selected' if s.cooldown_seconds == 300 }}>
+                  5 minutes — school gate
+                </option>
+                <option value="600"
+                  {{ 'selected' if s.cooldown_seconds == 600 }}>
+                  10 minutes — office
+                </option>
+                <option value="1800"
+                  {{ 'selected' if s.cooldown_seconds == 1800 }}>
+                  30 minutes
+                </option>
+                <option value="3600"
+                  {{ 'selected' if s.cooldown_seconds == 3600 }}>
+                  1 hour
+                </option>
+                <option value="custom"
+                  {{ 'selected' if s.cooldown_seconds not in
+                    [30,60,120,300,600,1800,3600] }}>
+                  Custom...
+                </option>
+              </select>
+            </div>
+
+            <!-- Custom input -->
+            <div class="col-md-3" id="custom-div"
+                 style="display:{{ 'block'
+                   if s.cooldown_seconds not in [30,60,120,300,600,1800,3600]
+                   else 'none' }}">
+              <div class="input-group">
+                <input type="number" id="custom-input"
+                       class="form-control"
+                       placeholder="seconds"
+                       min="10" max="86400"
+                       value="{{ s.cooldown_seconds }}"
+                       oninput="onCustomInput(this.value)"/>
+                <span class="input-group-text">sec</span>
+              </div>
+            </div>
+
+            <!-- Live display -->
+            <div class="col-md-4">
+              <div class="alert alert-info py-2 px-3 mb-0 small">
+                <i class="bi bi-clock me-1"></i>
+                Active: <strong id="cooldown-display">
+                  {{ s.cooldown_seconds // 60 }}m
+                  {{ s.cooldown_seconds % 60 }}s
+                </strong>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Hidden field submitted with form -->
+          <input type="hidden" name="cooldown_seconds"
+                 id="cooldown-final"
+                 value="{{ s.cooldown_seconds }}"/>
+
+          <!-- Reference table -->
+          <div class="mt-3">
+            <p class="text-muted small fw-semibold mb-1">
+              Recommended values:
+            </p>
+            <table class="table table-sm table-bordered small"
+                   style="max-width:420px;">
+              <thead class="table-light">
+                <tr><th>Use case</th><th>Recommended</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>Testing / development</td>
+                    <td>30 seconds</td></tr>
+                <tr><td>School gate</td>
+                    <td>5 minutes</td></tr>
+                <tr><td>College gate</td>
+                    <td>5–10 minutes</td></tr>
+                <tr><td>Office entrance</td>
+                    <td>10 minutes</td></tr>
+                <tr><td>Library / canteen</td>
+                    <td>2 minutes</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <hr class="my-4"/>
+
+        <!-- SAVE BUTTON -->
+        <div class="d-flex align-items-center gap-3">
+          <button type="submit" class="btn btn-primary px-5 fw-semibold">
+            <i class="bi bi-save2-fill me-2"></i>Save Settings
+          </button>
+          <span class="text-muted small">
+            Changes apply immediately after saving.
+          </span>
+        </div>
+
+      </form>
+    </div>
+  </div>
+
+  <!-- RIGHT: Live preview -->
+  <div class="col-md-5">
+    <div class="card p-4 mb-3">
+      <h6 class="fw-bold mb-3">
+        <i class="bi bi-eye me-2"></i>Current Active Settings
+      </h6>
+      <div class="text-center py-2">
+        <div id="preview-icon" style="font-size:2.8rem;">
+          {% if s.institution_type == 'school' %}🏫
+          {% elif s.institution_type == 'office' %}🏢
+          {% else %}🎓{% endif %}
+        </div>
+        <div id="preview-name" class="fw-bold fs-5 mt-1">
+          {{ s.institution_name }}
+        </div>
+        <div id="preview-type" class="text-muted small">
+          {{ s.institution_type | title }}
+        </div>
+        <hr/>
+        <div class="row text-center">
+          <div class="col-6">
+            <div class="text-danger fw-bold fs-4" id="preview-late">
+              {% if s.institution_type == 'school' %}
+                {{ s.school_late_time }}
+              {% elif s.institution_type == 'office' %}
+                {{ s.office_late_time }}
+              {% else %}
+                {{ s.college_late_time }}
+              {% endif %}
+            </div>
+            <div class="text-muted small">Late after</div>
+          </div>
+          <div class="col-6">
+            <div class="text-primary fw-bold fs-4" id="preview-cooldown">
+              {{ s.cooldown_seconds // 60 }}m
+            </div>
+            <div class="text-muted small">Cooldown</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Last saved info -->
+    <div class="card p-3">
+      <h6 class="fw-bold mb-2">
+        <i class="bi bi-info-circle me-2"></i>Info
+      </h6>
+      <ul class="list-unstyled small text-muted mb-0">
+        <li class="mb-1">
+          <i class="bi bi-check-circle text-success me-1"></i>
+          Settings saved to database permanently
+        </li>
+        <li class="mb-1">
+          <i class="bi bi-check-circle text-success me-1"></i>
+          Cooldown updates live without restart
+        </li>
+        <li class="mb-1">
+          <i class="bi bi-check-circle text-success me-1"></i>
+          Late threshold applies from next IN1 event
+        </li>
+        <li>
+          <i class="bi bi-clock text-muted me-1"></i>
+          Last saved:
+          <strong>{{ s.updated_at.strftime('%d %b %Y %I:%M %p')
+            if s.updated_at else 'Never' }}</strong>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ── Initial state ─────────────────────────────────────────────────
+const savedType     = "{{ s.institution_type }}";
+const times         = {
+  school:  "{{ s.school_late_time }}",
+  college: "{{ s.college_late_time }}",
+  office:  "{{ s.office_late_time }}"
+};
+const icons  = { school:"🏫", college:"🎓", office:"🏢" };
+const presets = [30, 60, 120, 300, 600, 1800, 3600];
+
+// ── On page load — highlight active card ─────────────────────────
+document.addEventListener("DOMContentLoaded", function() {
+  highlightCard(savedType);
+});
+
+// ── Institution type changed ──────────────────────────────────────
+function onTypeChange() {
+  const val = document.getElementById("inst-type").value;
+  highlightCard(val);
+  document.getElementById("preview-icon").textContent  = icons[val];
+  document.getElementById("preview-type").textContent  =
+    val.charAt(0).toUpperCase() + val.slice(1);
+  document.getElementById("preview-late").textContent  = times[val];
+}
+
+function highlightCard(val) {
+  ["school","college","office"].forEach(t => {
+    const card  = document.getElementById("card-" + t);
+    const badge = document.getElementById("badge-" + t);
+    if (t === val) {
+      card.style.border = "2px solid #0d6efd";
+      card.style.background = "#f0f5ff";
+      badge.classList.remove("d-none");
+    } else {
+      card.style.border = "1px solid #dee2e6";
+      card.style.background = "";
+      badge.classList.add("d-none");
+    }
+  });
+}
+
+// ── Cooldown dropdown changed ─────────────────────────────────────
+function onCooldownChange(val) {
+  const customDiv  = document.getElementById("custom-div");
+  const finalInput = document.getElementById("cooldown-final");
+
+  if (val === "custom") {
+    customDiv.style.display = "block";
+  } else {
+    customDiv.style.display = "none";
+    finalInput.value        = val;
+    updateCooldownDisplay(parseInt(val));
+  }
+}
+
+// ── Custom seconds input ──────────────────────────────────────────
+function onCustomInput(val) {
+  const sec = parseInt(val) || 0;
+  document.getElementById("cooldown-final").value = sec;
+  updateCooldownDisplay(sec);
+}
+
+// ── Update display ────────────────────────────────────────────────
+function updateCooldownDisplay(sec) {
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  const text = m > 0
+    ? (s > 0 ? `${m}m ${s}s` : `${m}m`)
+    : `${s}s`;
+  document.getElementById("cooldown-display").textContent = text;
+  document.getElementById("preview-cooldown").textContent = text;
+}
+
+// ── Update late time preview when time inputs change ──────────────
+document.querySelectorAll("input[type=time]").forEach(input => {
+  input.addEventListener("change", function() {
+    const activeType = document.getElementById("inst-type").value;
+    times[input.name.replace("_late_time","")] = input.value;
+    if (input.name === activeType + "_late_time") {
+      document.getElementById("preview-late").textContent = input.value;
+    }
+  });
+});
+
+// ── Update institution name preview live ──────────────────────────
+document.querySelector("input[name=institution_name]")
+  .addEventListener("input", function() {
+    document.getElementById("preview-name").textContent =
+      this.value || "My Institution";
+  });
+</script>
+{% endblock %}
